@@ -67,8 +67,75 @@ async function getCityList() {
   return rows;
 }
 
+/**
+ * 查询某城市最新一条天气数据
+ * @param {number} cityId - 城市 ID
+ */
+async function getLatestWeather(cityId) {
+  const sql = `
+    SELECT 
+      w.id,
+      w.city_id,
+      c.city_name,
+      c.city_code,
+      w.observe_time,
+      w.temperature,
+      w.feels_like,
+      w.humidity,
+      w.pressure,
+      w.wind_speed,
+      w.wind_dir,
+      w.precipitation,
+      w.weather_text,
+      w.weather_code,
+      w.source,
+      w.created_at
+    FROM weather_realtime w
+    LEFT JOIN city c ON w.city_id = c.id
+    WHERE w.city_id = ?
+    ORDER BY w.observe_time DESC
+    LIMIT 1
+  `;
+  const [rows] = await pool.query(sql, [cityId]);
+  return rows[0] || null;
+}
+
+/**
+ * 查询某城市最近 N 条天气数据（用于折线图）
+ * @param {number} cityId - 城市 ID
+ * @param {number} limit - 返回条数，默认 24
+ */
+async function getRecentWeather(cityId, limit = 24) {
+  const sql = `
+    SELECT 
+      w.id,
+      w.city_id,
+      c.city_name,
+      w.observe_time,
+      w.temperature,
+      w.feels_like,
+      w.humidity,
+      w.pressure,
+      w.wind_speed,
+      w.wind_dir,
+      w.precipitation,
+      w.weather_text,
+      w.weather_code
+    FROM weather_realtime w
+    LEFT JOIN city c ON w.city_id = c.id
+    WHERE w.city_id = ?
+    ORDER BY w.observe_time DESC
+    LIMIT ?
+  `;
+  const [rows] = await pool.query(sql, [cityId, limit]);
+  // 返回时按时间正序（方便前端绘制折线图）
+  return rows.reverse();
+}
+
 module.exports = {
   testQuery,
   insertWeather,
-  getCityList
+  getCityList,
+  getLatestWeather,
+  getRecentWeather
 };
