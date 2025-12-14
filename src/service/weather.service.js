@@ -6,7 +6,8 @@ const axios = require('axios');
 class WeatherService {
   constructor() {
     this.apiKey = process.env.QWEATHER_KEY;
-    this.baseUrl = 'https://devapi.qweather.com/v7'; // 免费版用 devapi，商业版用 api
+    // 从环境变量读取 API Host，支持免费版(devapi)和商业版(api)切换
+    this.baseUrl = process.env.QWEATHER_API_HOST || 'https://devapi.qweather.com/v7';
   }
 
   /**
@@ -17,6 +18,10 @@ class WeatherService {
   async fetchRealtimeWeather(location) {
     try {
       const url = `${this.baseUrl}/weather/now`;
+      
+      // 调试日志：输出实际请求的 URL 和 Key
+      console.log(`请求和风天气 API: ${url}?location=${location}&key=${this.apiKey ? this.apiKey.substring(0, 8) + '...' : 'undefined'}`);
+      
       const response = await axios.get(url, {
         params: {
           location,
@@ -26,7 +31,7 @@ class WeatherService {
       });
 
       const { code, now } = response.data;
-
+  
       // 和风天气响应码：200 表示成功
       if (code !== '200') {
         throw new Error(`QWeather API error: code=${code}`);
@@ -34,7 +39,7 @@ class WeatherService {
 
       // 将和风天气的字段映射到我们的数据结构
       return {
-        observeTime: now.obsTime,           // 观测时间（ISO 8601）
+        observeTime: new Date(now.obsTime), // 观测时间(转为 Date 对象供 MySQL 使用)
         temperature: parseFloat(now.temp),  // 温度
         feelsLike: parseFloat(now.feelsLike), // 体感温度
         humidity: parseInt(now.humidity),   // 相对湿度
@@ -46,7 +51,13 @@ class WeatherService {
         weatherCode: now.icon               // 天气图标代码
       };
     } catch (error) {
-      console.error(`Failed to fetch weather for location ${location}:`, error.message);
+      // 增强错误信息，输出详细的响应内容
+      if (error.response) {
+        console.error(`Failed to fetch weather for location ${location}:`, error.message);
+        console.error('和风天气 API 响应:', JSON.stringify(error.response.data, null, 2));
+      } else {
+        console.error(`Failed to fetch weather for location ${location}:`, error.message);
+      }
       throw error;
     }
   }
