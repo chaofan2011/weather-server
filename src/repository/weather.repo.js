@@ -1,10 +1,37 @@
 const pool = require('../config/db');
 
 /**
+ * 带一次重试的安全查询封装
+ * 用于处理偶发的 ETIMEDOUT / 连接丢失等错误
+ */
+async function queryWithRetry(sql, params = [], retries = 1) {
+  try {
+    return await pool.query(sql, params);
+  } catch (err) {
+    // 只对"连接类"错误做重试
+    const transientErrors = ['ETIMEDOUT', 'PROTOCOL_CONNECTION_LOST', 'ECONNRESET'];
+
+    if (retries > 0 && transientErrors.includes(err.code)) {
+      console.warn(
+        `DB query failed with ${err.code}, retrying once... sql=${sql
+          .trim()
+          .slice(0, 80)}...`
+      );
+      // 稍微等一会再重试
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      return queryWithRetry(sql, params, retries - 1);
+    }
+
+    // 非瞬时错误或重试用完，正常抛出
+    throw err;
+  }
+}
+
+/**
  * 用于健康检查
  */
 async function testQuery() {
-  const [rows] = await pool.query('SELECT NOW() AS now_time');
+  const [rows] = await queryWithRetry('SELECT NOW() AS now_time');
   return rows[0];
 }
 
@@ -63,7 +90,7 @@ async function insertWeather(data) {
  */
 async function getCityList() {
   const sql = 'SELECT id, city_code, city_name FROM city';
-  const [rows] = await pool.query(sql);
+  const [rows] = await queryWithRetry(sql);
   return rows;
 }
 
@@ -96,7 +123,7 @@ async function getLatestWeather(cityId) {
     ORDER BY w.observe_time DESC
     LIMIT 1
   `;
-  const [rows] = await pool.query(sql, [cityId]);
+  const [rows] = await queryWithRetry(sql, [cityId]);
   return rows[0] || null;
 }
 
@@ -127,7 +154,7 @@ async function getRecentWeather(cityId, limit = 24) {
     ORDER BY w.observe_time DESC
     LIMIT ?
   `;
-  const [rows] = await pool.query(sql, [cityId, limit]);
+  const [rows] = await queryWithRetry(sql, [cityId, limit]);
   // 返回时按时间正序（方便前端绘制折线图）
   return rows.reverse();
 }
