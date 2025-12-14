@@ -1,4 +1,5 @@
 const { insertWeather } = require('../repository/weather.repo');
+const { fetchAndSaveWeather } = require('../service/weather.service');
 
 async function mockInsert(req, res) {
   await insertWeather({
@@ -12,6 +13,15 @@ async function mockInsert(req, res) {
   res.json({ message: 'weather inserted' });
 }
 
+async function fetchWeather(req, res) {
+  const result = await fetchAndSaveWeather();
+  res.json({
+    message: 'weather fetched',
+    data: result
+  });
+}
+
 module.exports = {
-  mockInsert
+  mockInsert,
+  fetchWeather
 };
