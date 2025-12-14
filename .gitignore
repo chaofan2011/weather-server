@@ -2,3 +2,4 @@ node_modules/
 npm-debug.log
 .DS_Store # Mac自带的无用文件
 .env
+.DS_Store
