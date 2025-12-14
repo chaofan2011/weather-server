@@ -10,9 +10,9 @@ const pool = mysql.createPool({
   connectionLimit: 10,
   queueLimit: 0,
   
-  // 连接超时配置（防止定时任务中偶发超时）
-  connectTimeout: 10000,      // 连接 MySQL 服务器的超时时间（10秒）
-  acquireTimeout: 10000,      // 从连接池获取连接的等待超时（10秒）
+  // 连接超时配置（针对公网远程 MySQL，适当放宽）
+  connectTimeout: 20000,      // 连接 MySQL 服务器的超时时间（20秒）
+  acquireTimeout: 20000,      // 从连接池获取连接的等待超时（20秒）
   
   // 保持连接活跃，防止长时间空闲被云数据库/防火墙断开
   enableKeepAlive: true,

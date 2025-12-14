@@ -1,10 +1,10 @@
 const pool = require('../config/db');
 
 /**
- * 带一次重试的安全查询封装
+ * 带重试的安全查询封装
  * 用于处理偶发的 ETIMEDOUT / 连接丢失等错误
  */
-async function queryWithRetry(sql, params = [], retries = 1) {
+async function queryWithRetry(sql, params = [], retries = 2) {
   try {
     return await pool.query(sql, params);
   } catch (err) {
@@ -12,17 +12,19 @@ async function queryWithRetry(sql, params = [], retries = 1) {
     const transientErrors = ['ETIMEDOUT', 'PROTOCOL_CONNECTION_LOST', 'ECONNRESET'];
 
     if (retries > 0 && transientErrors.includes(err.code)) {
+      const attemptNum = 3 - retries; // 计算当前是第几次尝试
       console.warn(
-        `DB query failed with ${err.code}, retrying once... sql=${sql
+        `DB query failed with ${err.code} (attempt ${attemptNum}/3), retrying in 1s... sql=${sql
           .trim()
-          .slice(0, 80)}...`
+          .slice(0, 60)}...`
       );
-      // 稍微等一会再重试
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      // 等待 1 秒后重试，给云数据库更多恢复时间
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       return queryWithRetry(sql, params, retries - 1);
     }
 
     // 非瞬时错误或重试用完，正常抛出
+    console.error(`DB query failed after all retries: ${err.code}`);
     throw err;
   }
 }
