@@ -1,4 +1,4 @@
-name: Deploy weather-server
+name: deploy on push to main
 
 on:
   push:
@@ -7,7 +7,28 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Pack app
+        run: |
+          tar \
+            --exclude=.git \
+            --exclude=node_modules \
+            --exclude=.github \
+            -czf app.tgz .
+
+      - name: Upload package to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          source: "app.tgz"
+          target: "/tmp"
+
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.2.0
         with:
@@ -16,5 +37,10 @@ jobs:
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           script: |
             set -e
-            cd ${{ secrets.DEPLOY_PATH }}
-            /opt/weather-server/deploy.sh
+            mkdir -p "${{ secrets.DEPLOY_PATH }}"
+            cd "${{ secrets.DEPLOY_PATH }}"
+            tar -xzf /tmp/app.tgz -C "${{ secrets.DEPLOY_PATH }}"
+            npm ci --omit=dev
+            pm2 reload 0 --update-env
+            pm2 save
+            echo "✅ deployed at $(date)"
