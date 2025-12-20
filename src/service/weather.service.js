@@ -32,7 +32,7 @@ class WeatherService {
 
       const { code, now } = response.data;
   
-      // 和风天气响应码：200 表示成功
+      // 和风天气响应码：200 表示成功 修改
       if (code !== '200') {
         throw new Error(`QWeather API error: code=${code}`);
       }
