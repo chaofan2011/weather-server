@@ -18,7 +18,8 @@ jobs:
             --exclude=.git \
             --exclude=node_modules \
             --exclude=.github \
-            -czf /tmp/app.tgz .
+            --exclude=app.tgz \
+            -czf app.tgz .
 
       - name: Upload package to server
         uses: appleboy/scp-action@v0.1.7
@@ -26,7 +27,7 @@ jobs:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
-          source: "/tmp/app.tgz"
+          source: "app.tgz"
           target: "/tmp"
 
       - name: Deploy via SSH
@@ -38,8 +39,8 @@ jobs:
           script: |
             set -e
             mkdir -p "${{ secrets.DEPLOY_PATH }}"
-            cd "${{ secrets.DEPLOY_PATH }}"
             tar -xzf /tmp/app.tgz -C "${{ secrets.DEPLOY_PATH }}"
+            cd "${{ secrets.DEPLOY_PATH }}"
             npm ci --omit=dev
             pm2 reload 0 --update-env
             pm2 save
