@@ -18,7 +18,7 @@ jobs:
             --exclude=.git \
             --exclude=node_modules \
             --exclude=.github \
-            -czf app.tgz .
+            -czf /tmp/app.tgz .
 
       - name: Upload package to server
         uses: appleboy/scp-action@v0.1.7
@@ -26,7 +26,7 @@ jobs:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
-          source: "app.tgz"
+          source: "/tmp/app.tgz"
           target: "/tmp"
 
       - name: Deploy via SSH
